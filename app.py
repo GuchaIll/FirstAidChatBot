@@ -3,6 +3,7 @@ from keras.models import load_model
 import tensorflow as tf
 from wtforms import (Form, TextField, validators, SubmitField, 
 DecimalField, IntegerField)
+from modelLoad import *
 
 app = Flask(__name__)
 
@@ -24,27 +25,19 @@ class ReusableForm(Form):
   # Submit button
   submit = SubmitField("Enter")
 
-def load_keras_model():
-    """Load in the pre-trained model"""
-    global model
-    model = load_model('models/transformer.h5')
-    # Required for model to work
-    global graph
-    graph = tf.get_default_graph()
-
 
 @app.route("/", methods = ['GET', 'POST'])
 def home():
 
   form = ReusableForm(request.form)
-
+  model = Load_model()
   if request.method == 'POST' and form.validate():
     emergency = request.form['emergency']
     accuracy = float(request.form['accuracy'])
     if not emergency.strip():
-      return render_template('home.html', response = report_error(graph = graph))
+      return render_template('home.html', response = model.report_error())
     else:
-      return render_template('home.html', response = generate_response(emergency = emergency, accuracy = accuracy, word = 150, graph = graph)
+      return render_template('home.html', response = model.generate_response(emergency = emergency, accuracy = accuracy, word = 150))
   load_keras_model()
   return render_template('home.html')
 

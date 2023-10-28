@@ -25,5 +25,39 @@
   <input type="text" id="enterVal" name="enterVal"><br><br>
   <input type="submit" value="Submit">
 </form>
+  <div class="container">
+    <h1>
+      <center>Writing Novel Patent Abstracts with Recurrent Neural Networks</center>
+    </h1>
+
+    {% block content %}
+    {% for message in form.emergency.errors %}
+    <div class="flash">{{ message }}</div>
+    {% endfor %}
+
+    {% for message in form.accuracy.errors %}
+    <div class="flash">{{ message }}</div>
+    {% endfor %}
+
+    {% for message in form.words.errors %}
+    <div class="flash">{{ message }}</div>
+    {% endfor %}
+
+    <form method=post>
+
+      {{ form.emergency.label }}
+      {{ form.emergency }}
+
+      {{ form.accuracy.label }}
+      {{ form.accuracy }}
+
+      {{ form.words.label }}
+      {{ form.words }}
+
+      {{ form.submit }}
+    </form>
+    {% endblock %}
+
+  </div>
 </body>
 </html>

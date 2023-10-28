@@ -19,17 +19,6 @@ import re
 import string
 import pickle
 
-VOCAB_SIZE = 3000
-MAX_LEN = 150
-EMBEDDING_DIM = 256
-KEY_DIM = 256
-N_HEADS = 2
-FEED_FORWARD_DIM = 256
-VALIDATION_SPLIT = 0.2
-SEED = 42
-LOAD_MODEL = False
-BATCH_SIZE = 4
-EPOCHS = 20
 
 
 def causal_attention_mask(batch_size, n_dest, n_src, dtype):
@@ -126,17 +115,6 @@ class TokenAndPositionEmbedding(layers.Layer):
         )
         return config
 
-inputs = layers.Input(shape=(None,), dtype=tf.int32)
-x = TokenAndPositionEmbedding(MAX_LEN, VOCAB_SIZE, EMBEDDING_DIM)(inputs)
-x, attention_scores = TransformerBlock(N_HEADS, KEY_DIM, EMBEDDING_DIM, FEED_FORWARD_DIM
-)(x)
-outputs = layers.Dense(VOCAB_SIZE, activation="softmax")(x)
-gpt = models.Model(inputs=inputs, outputs=[outputs, attention_scores])
-gpt.compile("adam", loss=[losses.SparseCategoricalCrossentropy(), None])
-gpt.summary()
-
-if LOAD_MODEL:
-  gpt = models.load_model("/content/drive/MyDrive/FirstAidChatbot/models/gpt2", compile = True)
 
 
 
@@ -176,24 +154,102 @@ class TextGenerator(callbacks.Callback):
         print(f"\ngenerated text:\n{start_prompt}\n")
         return info
 
-with open("models/vocab.pkl", 'rb') as file:
-  vocab_saved = pickle.load(file)
-print(vocab_saved)
-
-text_generator = TextGenerator(vocab_saved)
-
-return text_generator()
 
 
+def header(text, color='black', gen_text=None):
+  """Create an HTML header"""
+
+  if gen_text:
+      raw_html = f'<h1 style="margin-top:16px;color: {color};font-size:54px"><center>' + str(
+          text) + '<span style="color: red">' + str(gen_text) + '</center></h1>'
+  else:
+      raw_html = f'<h1 style="margin-top:12px;color: {color};font-size:54px"><center>' + str(
+          text) + '</center></h1>'
+  return raw_html
 
 
+def box(text, gen_text=None):
+  """Create an HTML box of text"""
+
+  if gen_text:
+      raw_html = '<div style="padding:8px;font-size:28px;margin-top:28px;margin-bottom:14px;">' + str(
+          text) + '<span style="color: red">' + str(gen_text) + '</div>'
+
+  else:
+      raw_html = '<div style="border-bottom:1px inset black;border-top:1px inset black;padding:8px;font-size: 28px;">' + str(
+          text) + '</div>'
+  return raw_html
+
+def addContent(old_html, raw_html):
+  """Add html content together"""
+
+  old_html += raw_html
+  return old_html
+
+def format_sequence(s):
+  """Add spaces around punctuation and remove references to images/citations."""
+
+  # Add spaces around punctuation
+  s = re.sub(r'(?<=[^\s0-9])(?=[.,;?])', r' ', s)
+
+  # Remove references to figures
+  s = re.sub(r'\((\d+)\)', r'', s)
+
+  # Remove double spaces
+  s = re.sub(r'\s\s', ' ', s)
+  return s
 
 
-info = text_generator.generate(
-    "FirstAid: what to do for snake bite ", max_tokens=150, temperature= 0.2
-)
+def remove_spaces(s):
+  """Remove spaces around punctuation"""
+
+  s = re.sub(r'\s+([.,;?])', r'\1', s)
+
+  return s
+
+class Load_model:
+    def __init__(self):
+        VOCAB_SIZE = 10000
+        MAX_LEN = 80
+        EMBEDDING_DIM = 256
+        KEY_DIM = 256
+        N_HEADS = 2
+        FEED_FORWARD_DIM = 256
+        VALIDATION_SPLIT = 0.2
+        SEED = 42
+        LOAD_MODEL = False
+        BATCH_SIZE = 32
+        EPOCHS = 5
+
+        inputs = layers.Input(shape=(None,), dtype=tf.int32)
+        x = TokenAndPositionEmbedding(MAX_LEN, VOCAB_SIZE, EMBEDDING_DIM)(inputs)
+        x, attention_scores = TransformerBlock(N_HEADS, KEY_DIM, EMBEDDING_DIM, FEED_FORWARD_DIM)(x)
+        outputs = layers.Dense(VOCAB_SIZE, activation="softmax")(x)
+        self.gpt = models.Model(inputs=inputs, outputs=[outputs, attention_scores])
+        self.gpt.compile("adam", loss=[lossets.SparseCategoricalCrossenropy(), None])
+        self.gpt.summary()
 
 
-info = text_generator.generate(
-    "recipe for chocolate ice cream |", max_tokens=7, temperature=1.0
-)
+        # Load the model and vocabulary (corrected file paths)
+        if LOAD_MODEL:
+            self.gpt = models.load_model("models/transformer.h5", compile=True)
+            with open("models/vocab.pkl", 'rb') as file:
+                self.vocab_saved = pickle.load(file)
+
+        # Create the text generator
+        self.text_generator = TextGenerator(self.vocab_saved)
+        self.text_generator.model = self.gpt
+
+    def generate_response(self, emergency, accuracy, word):
+        gen = self.text_generator.generate("FirstAid: " + emergency, accuracy, word)
+        # Corrected variable name from 'start' to 'gen'
+        gen = remove_spaces(' '.join(gen))  # Remove spaces around punctuation
+        html = ''
+        html = addContent(html, header(
+            'Input Seed ', color='black', gen_text='Network Output'))
+        html = addContent(html, box(emergency, gen))
+        return f'<div>{html}'
+
+    # Add 'self' parameter to report_error method
+    def report_error(self):
+        return f'<div>{'Error: Invalid Entry, Please input the correct instructions'}</div>'
